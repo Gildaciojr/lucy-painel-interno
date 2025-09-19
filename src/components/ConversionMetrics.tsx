@@ -21,24 +21,28 @@ import {
 
 interface User {
   id: number;
-  name: string;
-  email: string;
   plan?: string;
   source?: string;
   churned?: boolean;
 }
 
-interface MetricCardProps {
+interface ChartItem {
+  name: string;
+  free: number;
+  pro: number;
+}
+
+const MetricCard = ({
+  icon,
+  title,
+  value,
+}: {
   icon: React.ReactNode;
   title: string;
   value: string | number;
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ icon, title, value }) => (
+}) => (
   <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
-    <div className="p-3 rounded-full bg-green-500 text-white text-xl">
-      {icon}
-    </div>
+    <div className="p-3 rounded-full bg-green-500 text-white text-xl">{icon}</div>
     <div>
       <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
       <p className="text-xl font-bold text-gray-800">{value}</p>
@@ -51,7 +55,7 @@ export default function ConversionMetrics() {
     totalUsers: 0,
     proUsers: 0,
     churnRate: 0,
-    chartData: [] as { name: string; free: number; pro: number }[],
+    chartData: [] as ChartItem[],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,40 +63,36 @@ export default function ConversionMetrics() {
   useEffect(() => {
     const fetchConversionMetrics = async () => {
       try {
-        const usersResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users`,
-        );
-        if (!usersResponse.ok)
-          throw new Error("Erro ao buscar dados de usuários.");
+        setLoading(true);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`);
+        if (!res.ok) throw new Error("Erro ao buscar dados de usuários.");
+        const users: User[] = await res.json();
 
-        const usersData: User[] = await usersResponse.json();
-        const totalUsers = usersData.length;
-        const proUsers = usersData.filter((user) => user.plan === "Pro").length;
-        const churnedUsers = usersData.filter((user) => user.churned).length;
+        const totalUsers = users.length;
+        const proUsers = users.filter((u) => u.plan === "Pro").length;
+        const churned = users.filter((u) => u.churned).length;
+        const churnRate = totalUsers > 0 ? (churned / totalUsers) * 100 : 0;
 
-        const churnRate =
-          totalUsers > 0 ? (churnedUsers / totalUsers) * 100 : 0;
-
-        const conversionBySource = usersData.reduce(
-          (acc, user) => {
-            const source = user.source || "N/A";
-            if (!acc[source]) acc[source] = { name: source, free: 0, pro: 0 };
-            if (user.plan === "Pro") acc[source].pro += 1;
-            else acc[source].free += 1;
-            return acc;
-          },
-          {} as Record<string, { name: string; free: number; pro: number }>,
-        );
+        const bySource = users.reduce((acc, u) => {
+          const src = u.source || "N/A";
+          if (!acc[src]) acc[src] = { name: src, free: 0, pro: 0 };
+          if (u.plan === "Pro") acc[src].pro += 1;
+          else acc[src].free += 1;
+          return acc;
+        }, {} as Record<string, ChartItem>);
 
         setData({
           totalUsers,
           proUsers,
           churnRate,
-          chartData: Object.values(conversionBySource),
+          chartData: Object.values(bySource),
         });
       } catch (err: unknown) {
-        if (err instanceof Error) setError(err.message);
-        else setError("Erro desconhecido ao carregar métricas.");
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Erro desconhecido ao carregar métricas.");
+        }
       } finally {
         setLoading(false);
       }
@@ -103,21 +103,25 @@ export default function ConversionMetrics() {
 
   if (loading)
     return (
-      <div className="text-center p-6 flex items-center justify-center space-x-2">
-        <FaSpinner className="animate-spin" />
-        <span>Carregando métricas de conversão...</span>
+      <div className="flex justify-center items-center p-10">
+        <FaSpinner className="animate-spin mr-2" /> Carregando métricas de conversão...
       </div>
     );
 
   if (error)
-    return <div className="text-center p-6 text-red-500">Erro: {error}</div>;
+    return (
+      <div className="text-center text-red-500 p-6">
+        Erro ao carregar métricas: {error}
+      </div>
+    );
 
   const conversionRate =
     data.totalUsers > 0
       ? ((data.proUsers / data.totalUsers) * 100).toFixed(2) + "%"
       : "0%";
-  const estimatedROI = data.proUsers * 20;
-  const cac = 10;
+
+  const estimatedROI = data.proUsers * 20; // simulado
+  const cac = 10; // simulado
   const arpu = data.proUsers > 0 ? (data.proUsers * 20) / data.proUsers : 0;
 
   return (
@@ -125,32 +129,13 @@ export default function ConversionMetrics() {
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
         Métricas de Conversão
       </h2>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <MetricCard
-          icon={<FaChartBar />}
-          title="Taxa de Conversão"
-          value={conversionRate}
-        />
-        <MetricCard
-          icon={<FaSyncAlt />}
-          title="Tempo Médio de Upgrade"
-          value="30 dias"
-        />
-        <MetricCard
-          icon={<FaDollarSign />}
-          title="ROI Estimado"
-          value={`R$ ${estimatedROI.toFixed(2)}`}
-        />
-        <MetricCard
-          icon={<FaChartLine />}
-          title="Churn Mensal"
-          value={`${data.churnRate.toFixed(2)}%`}
-        />
-        <MetricCard
-          icon={<FaUsers />}
-          title="CAC x ARPU"
-          value={`R$ ${cac.toFixed(2)} x R$ ${arpu.toFixed(2)}`}
-        />
+        <MetricCard icon={<FaChartBar />} title="Taxa de Conversão" value={conversionRate} />
+        <MetricCard icon={<FaSyncAlt />} title="Tempo Médio Upgrade" value="30 dias" />
+        <MetricCard icon={<FaDollarSign />} title="ROI Estimado" value={`R$ ${estimatedROI.toFixed(2)}`} />
+        <MetricCard icon={<FaChartLine />} title="Churn Mensal" value={`${data.churnRate.toFixed(2)}%`} />
+        <MetricCard icon={<FaUsers />} title="CAC x ARPU" value={`R$ ${cac.toFixed(2)} x R$ ${arpu.toFixed(2)}`} />
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-6">
@@ -158,10 +143,7 @@ export default function ConversionMetrics() {
           Conversão por Origem
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={data.chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
+          <BarChart data={data.chartData}>
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
@@ -174,3 +156,7 @@ export default function ConversionMetrics() {
     </div>
   );
 }
+
+
+
+

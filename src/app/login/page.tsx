@@ -23,13 +23,23 @@ export default function LoginPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
-        },
+        }
       );
 
       if (!response.ok) throw new Error("Usuário ou senha incorretos.");
 
-      const data: { accessToken: string } = await response.json();
-      localStorage.setItem("auth_token", data.accessToken);
+      const data: {
+        access_token: string;
+        user: { id: number; role?: string };
+      } = await response.json();
+
+      // ⚡ Bloqueia usuários comuns
+      if (data.user.role !== "admin" && data.user.role !== "superadmin") {
+        throw new Error("Acesso negado: apenas administradores podem entrar.");
+      }
+
+      localStorage.setItem("auth_token", data.access_token);
+      localStorage.setItem("user_id", String(data.user.id));
 
       router.push("/users");
     } catch (err: unknown) {
@@ -52,7 +62,7 @@ export default function LoginPage() {
             <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Nome de usuário"
+              placeholder="Nome de usuário ou e-mail"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full p-4 pl-12 rounded-xl bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-200"
@@ -84,3 +94,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+

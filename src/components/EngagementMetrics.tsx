@@ -20,62 +20,8 @@ import {
 
 interface User {
   id: number;
-  name: string;
-  email: string;
   plan?: string;
-  source?: string;
 }
-
-interface Financa {
-  id: number;
-  categoria: string;
-  valor: string;
-  userId: number;
-}
-
-interface Compromisso {
-  id: number;
-  titulo: string;
-  data: string;
-  concluido: boolean;
-  userId: number;
-}
-
-interface Conteudo {
-  id: number;
-  ideia: string;
-  favorito: boolean;
-  agendado: boolean;
-  createdAt: string;
-  userId: number;
-}
-
-interface Gamificacao {
-  id: number;
-  badge: string;
-  dataConquista: string;
-  userId: number;
-}
-
-interface MetricCardProps {
-  icon: React.ReactNode;
-  title: string;
-  value: string | number;
-}
-
-const MetricCard: React.FC<MetricCardProps> = ({ icon, title, value }) => {
-  return (
-    <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
-      <div className="p-3 rounded-full bg-red-500 text-white text-xl">
-        {icon}
-      </div>
-      <div>
-        <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
-        <p className="text-xl font-bold text-gray-800">{value}</p>
-      </div>
-    </div>
-  );
-};
 
 export default function EngagementMetrics() {
   const [data, setData] = useState({
@@ -93,70 +39,52 @@ export default function EngagementMetrics() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const usersResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users`,
-        );
-        if (!usersResponse.ok)
-          throw new Error("Erro ao buscar dados de usuários.");
-        const usersData: User[] = await usersResponse.json();
+        const [usersRes, financasRes, compromissosRes, conteudoRes, gamificacaoRes] =
+          await Promise.all([
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/financas`),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/compromissos`),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/conteudo`),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamificacao`),
+          ]);
 
-        const financasResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/financas`,
-        );
-        if (!financasResponse.ok)
-          throw new Error("Erro ao buscar dados de finanças.");
-        const financasData: Financa[] = await financasResponse.json();
+        if (!usersRes.ok || !financasRes.ok || !compromissosRes.ok || !conteudoRes.ok || !gamificacaoRes.ok) {
+          throw new Error("Erro ao buscar dados do servidor.");
+        }
 
-        const compromissosResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/compromissos`,
-        );
-        if (!compromissosResponse.ok)
-          throw new Error("Erro ao buscar dados de compromissos.");
-        const compromissosData: Compromisso[] =
-          await compromissosResponse.json();
-
-        const conteudoResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/conteudo`,
-        );
-        if (!conteudoResponse.ok)
-          throw new Error("Erro ao buscar dados de conteúdo.");
-        const conteudoData: Conteudo[] = await conteudoResponse.json();
-
-        const gamificacaoResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/gamificacao`,
-        );
-        if (!gamificacaoResponse.ok)
-          throw new Error("Erro ao buscar dados de gamificação.");
-        const gamificacaoData: Gamificacao[] = await gamificacaoResponse.json();
+        const [users, financas, compromissos, conteudo, gamificacao]: [User[], unknown[], unknown[], unknown[], unknown[]] =
+          await Promise.all([
+            usersRes.json(),
+            financasRes.json(),
+            compromissosRes.json(),
+            conteudoRes.json(),
+            gamificacaoRes.json(),
+          ]);
 
         const usageData = [
-          { name: "Finanças", count: financasData.length },
-          { name: "Compromissos", count: compromissosData.length },
-          { name: "Conteúdo", count: conteudoData.length },
-          { name: "Gamificação", count: gamificacaoData.length },
+          { name: "Finanças", count: financas.length },
+          { name: "Compromissos", count: compromissos.length },
+          { name: "Conteúdo", count: conteudo.length },
+          { name: "Gamificação", count: gamificacao.length },
         ];
 
         const mostUsedFeature =
           [...usageData].sort((a, b) => b.count - a.count)[0]?.name || "N/A";
-        const proUsers = usersData.filter((user) => user.plan === "Pro").length;
+
+        const proUsers = users.filter((u) => u.plan === "Pro").length;
         const ltv = proUsers * 50;
 
-        const retentionD1 = "45%";
-        const retentionD7 = "25%";
-        const retentionD30 = "10%";
-
         setData({
-          totalUsers: usersData.length,
+          totalUsers: users.length,
           mostUsedFeature,
           chartData: usageData,
           ltv,
-          retentionD1,
-          retentionD7,
-          retentionD30,
+          retentionD1: "45%",
+          retentionD7: "25%",
+          retentionD30: "10%",
         });
       } catch (err: unknown) {
-        if (err instanceof Error) setError(err.message);
-        else setError("Erro desconhecido ao carregar métricas.");
+        setError(err instanceof Error ? err.message : "Erro desconhecido ao carregar métricas.");
       } finally {
         setLoading(false);
       }
@@ -164,82 +92,76 @@ export default function EngagementMetrics() {
     fetchMetrics();
   }, []);
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="text-center p-6 flex items-center justify-center space-x-2">
-        <FaSpinner className="animate-spin" />
-        <span>Carregando métricas...</span>
+      <div className="flex justify-center items-center p-10">
+        <FaSpinner className="animate-spin mr-2" /> Carregando métricas...
       </div>
     );
-  }
 
-  if (error) {
-    return <div className="text-center p-6 text-red-500">Erro: {error}</div>;
-  }
+  if (error)
+    return (
+      <div className="text-center text-red-500 p-6">
+        Erro ao carregar métricas: {error}
+      </div>
+    );
 
   return (
     <div className="p-6 bg-gray-50 rounded-lg shadow-inner">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
         Métricas de Engajamento
       </h2>
+
+      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <MetricCard
-          icon={<FaUsers />}
-          title="Total de Usuários"
-          value={data.totalUsers}
-        />
-        <MetricCard
-          icon={<FaChartLine />}
-          title="Recurso Mais Usado"
-          value={data.mostUsedFeature}
-        />
-        <MetricCard
-          icon={<FaDollarSign />}
-          title="LTV (Valor Vitalício)"
-          value={`R$ ${data.ltv.toFixed(2)}`}
-        />
+        <MetricCard icon={<FaUsers />} title="Total de Usuários" value={data.totalUsers} />
+        <MetricCard icon={<FaChartLine />} title="Mais Usado" value={data.mostUsedFeature} />
+        <MetricCard icon={<FaDollarSign />} title="LTV Médio" value={`R$ ${data.ltv.toFixed(2)}`} />
       </div>
 
+      {/* Uso de recursos */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Uso de Recursos
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart
-            data={data.chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-          >
+          <BarChart data={data.chartData}>
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey="count" fill="#8884d8" name="Uso" />
+            <Bar dataKey="count" fill="#6366f1" name="Uso" />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
+      {/* Retenção */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           Métricas de Retenção
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
-            icon={<FaRetweet />}
-            title="Retenção D1"
-            value={data.retentionD1}
-          />
-          <MetricCard
-            icon={<FaRetweet />}
-            title="Retenção D7"
-            value={data.retentionD7}
-          />
-          <MetricCard
-            icon={<FaRetweet />}
-            title="Retenção D30"
-            value={data.retentionD30}
-          />
+          <MetricCard icon={<FaRetweet />} title="Retenção D1" value={data.retentionD1} />
+          <MetricCard icon={<FaRetweet />} title="Retenção D7" value={data.retentionD7} />
+          <MetricCard icon={<FaRetweet />} title="Retenção D30" value={data.retentionD30} />
         </div>
       </div>
     </div>
   );
 }
+
+function MetricCard({ icon, title, value }: { icon: React.ReactNode; title: string; value: string | number }) {
+  return (
+    <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
+      <div className="p-3 rounded-full bg-red-500 text-white text-xl">{icon}</div>
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
+        <p className="text-xl font-bold text-gray-800">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+
+
+
