@@ -33,7 +33,17 @@ export default function LoginPage() {
         }
       );
 
-      if (!response.ok) throw new Error("Usuário ou senha incorretos.");
+      if (!response.ok) {
+        // tenta ler mensagem do backend
+        let message = "Usuário ou senha incorretos.";
+        try {
+          const data = await response.json();
+          if (data?.message) message = data.message;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(message);
+      }
 
       const data: {
         access_token: string;
@@ -101,6 +111,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
 
 

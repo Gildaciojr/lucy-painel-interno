@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FaArrowLeft, FaStar, FaSpinner, FaInbox, FaReply } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/services/api";
 
 interface Feedback {
   id: number;
@@ -28,10 +29,15 @@ export default function FeedbackPage() {
 
   const loadFeedbacks = async () => {
     setLoading(true);
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/feedback`);
-    const data: Feedback[] = await res.json();
-    setFeedbacks(data);
-    setLoading(false);
+    try {
+      const data: Feedback[] = await apiFetch("/feedback");
+      setFeedbacks(data);
+    } catch (err: unknown) {
+      console.error("Erro ao carregar feedbacks:", err);
+      setFeedbacks([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -39,21 +45,30 @@ export default function FeedbackPage() {
   }, []);
 
   const handleReply = async (id: number) => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/feedback/${id}/reply`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reply: replyText }),
-    });
-    setReplyingId(null);
-    setReplyText("");
-    loadFeedbacks();
+    if (!replyText.trim()) return;
+    try {
+      await apiFetch(`/feedback/${id}/reply`, {
+        method: "PATCH",
+        body: JSON.stringify({ reply: replyText }),
+      });
+      setReplyingId(null);
+      setReplyText("");
+      await loadFeedbacks();
+    } catch (err: unknown) {
+      console.error("Erro ao enviar resposta:", err);
+      // opcional: alert("Erro ao enviar resposta")
+    }
   };
 
   const handleArchive = async (id: number) => {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/feedback/${id}/archive`, {
-      method: "PATCH",
-    });
-    loadFeedbacks();
+    try {
+      await apiFetch(`/feedback/${id}/archive`, {
+        method: "PATCH",
+      });
+      await loadFeedbacks();
+    } catch (err: unknown) {
+      console.error("Erro ao arquivar feedback:", err);
+    }
   };
 
   const filteredFeedbacks = feedbacks.filter((f) => {
@@ -169,5 +184,6 @@ export default function FeedbackPage() {
     </div>
   );
 }
+
 
 
