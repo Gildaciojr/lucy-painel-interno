@@ -1,4 +1,4 @@
-// src/components/ConversionMetrics.tsx
+// painel-interno/src/components/ConversionMetrics.tsx
 "use client";
 
 import React, { useState, useEffect, JSX } from "react";
@@ -101,6 +101,7 @@ export default function ConversionMetrics(): JSX.Element {
     </div>
   );
 }
+
 
 
 

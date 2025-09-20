@@ -1,3 +1,4 @@
+// painel-interno/src/app/admins/page.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -9,7 +10,6 @@ import {
   FaArrowLeft,
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/services/api";
 
 interface Admin {
   id: number;
@@ -41,12 +41,13 @@ export default function AdminManagementPage() {
   const router = useRouter();
 
   const fetchAdmins = useCallback(async () => {
-    setLoading(true);
     try {
-      const data: Admin[] = await apiFetch("/users");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`);
+      if (!response.ok) throw new Error("Erro ao buscar administradores.");
+      const data: Admin[] = await response.json();
       setAdmins(data.filter((user) => user.role === "admin" || user.role === "superadmin"));
-    } catch (err: unknown) {
-      console.error("Erro ao buscar administradores:", err);
+    } catch {
+      console.error("Erro ao buscar administradores");
       setAdmins([]);
     } finally {
       setLoading(false);
@@ -67,10 +68,12 @@ export default function AdminManagementPage() {
     setFormLoading(true);
     setFormStatus(null);
     try {
-      await apiFetch("/users", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formState),
       });
+      if (!response.ok) throw new Error();
       setFormStatus("success");
       setFormState({
         name: "",
@@ -82,8 +85,7 @@ export default function AdminManagementPage() {
         role: "user",
       });
       await fetchAdmins();
-    } catch (err: unknown) {
-      console.error("Erro ao adicionar administrador:", err);
+    } catch {
       setFormStatus("error");
     } finally {
       setFormLoading(false);
@@ -109,10 +111,15 @@ export default function AdminManagementPage() {
     setFormLoading(true);
     setFormStatus(null);
     try {
-      await apiFetch(`/users/${editingAdmin.id}`, {
-        method: "PUT",
-        body: JSON.stringify(formState),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${editingAdmin.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formState),
+        },
+      );
+      if (!response.ok) throw new Error();
       setFormStatus("success");
       setEditingAdmin(null);
       setFormState({
@@ -125,8 +132,7 @@ export default function AdminManagementPage() {
         role: "user",
       });
       await fetchAdmins();
-    } catch (err: unknown) {
-      console.error("Erro ao atualizar administrador:", err);
+    } catch {
       setFormStatus("error");
     } finally {
       setFormLoading(false);
@@ -139,12 +145,16 @@ export default function AdminManagementPage() {
     );
     if (!confirmDelete) return;
     try {
-      await apiFetch(`/users/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
+      if (!response.ok) throw new Error();
       await fetchAdmins();
-    } catch (err: unknown) {
-      console.error("Erro ao excluir administrador:", err);
+    } catch {
+      console.error("Erro ao excluir administrador.");
     }
   };
 
@@ -245,6 +255,7 @@ export default function AdminManagementPage() {
     </div>
   );
 }
+
 
 
 
