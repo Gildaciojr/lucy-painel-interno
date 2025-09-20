@@ -17,12 +17,19 @@ export default function LoginPage() {
     setError("");
 
     try {
+      // 🔑 Detecta se o valor digitado é email ou username
+      const isEmail = username.includes("@");
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify(
+            isEmail
+              ? { email: username, password }
+              : { username, password }
+          ),
         }
       );
 
@@ -33,7 +40,7 @@ export default function LoginPage() {
         user: { id: number; role?: string };
       } = await response.json();
 
-      // ⚡ Bloqueia usuários comuns
+      // ⚡ Apenas administradores e superadmins podem acessar
       if (data.user.role !== "admin" && data.user.role !== "superadmin") {
         throw new Error("Acesso negado: apenas administradores podem entrar.");
       }
@@ -94,5 +101,6 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
 
