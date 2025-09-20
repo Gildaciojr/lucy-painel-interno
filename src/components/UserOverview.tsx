@@ -1,13 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  FaSpinner,
-  FaPlus,
-  FaEdit,
-  FaTrashAlt,
-  FaTimes,
-} from "react-icons/fa";
+import { FaSpinner, FaPlus, FaEdit, FaTrashAlt, FaTimes } from "react-icons/fa";
+import { apiFetch } from "../services/api";
 
 interface User {
   id: number;
@@ -25,7 +20,9 @@ export default function UserOverview() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<"all" | "pro" | "premium" | "free">("all");
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "pro" | "premium" | "free"
+  >("all");
 
   const [formState, setFormState] = useState({
     name: "",
@@ -43,14 +40,13 @@ export default function UserOverview() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`);
-      if (!response.ok) throw new Error("Erro ao buscar usuários.");
-      const data: User[] = await response.json();
+      const data: User[] = await apiFetch("/users");
       setUsers(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro desconhecido";
-      setError(message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setLoading(false);
     }
@@ -72,12 +68,10 @@ export default function UserOverview() {
     setFormLoading(true);
     setFormStatus(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
+      await apiFetch("/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formState),
       });
-      if (!res.ok) throw new Error();
       setFormStatus("success");
       setFormState({
         name: "",
@@ -118,15 +112,10 @@ export default function UserOverview() {
     if (!editingUser) return;
     setFormLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${editingUser.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formState),
-        },
-      );
-      if (!res.ok) throw new Error();
+      await apiFetch(`/users/${editingUser.id}`, {
+        method: "PUT",
+        body: JSON.stringify(formState),
+      });
       setEditingUser(null);
       setFormStatus("success");
       fetchUsers();
@@ -140,11 +129,7 @@ export default function UserOverview() {
   const handleDeleteUser = async (id: number) => {
     if (!confirm("Deseja realmente excluir este usuário?")) return;
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${id}`,
-        { method: "DELETE" },
-      );
-      if (!res.ok) throw new Error();
+      await apiFetch(`/users/${id}`, { method: "DELETE" });
       fetchUsers();
     } catch {
       alert("Erro ao excluir usuário.");
@@ -177,9 +162,7 @@ export default function UserOverview() {
 
   return (
     <div className="p-6 bg-gray-50 rounded-lg shadow-inner">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Gestão de Usuários
-      </h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Gestão de Usuários</h2>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -202,7 +185,7 @@ export default function UserOverview() {
         ))}
       </div>
 
-      {/* Formulário */}
+      {/* Form */}
       <div className="bg-white rounded-xl shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           {editingUser ? "Editar Usuário" : "Adicionar Novo Usuário"}
@@ -212,49 +195,108 @@ export default function UserOverview() {
           className="space-y-4"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="name" value={formState.name} onChange={handleInputChange} placeholder="Nome" className="p-2 border rounded-lg" required />
-            <input type="email" name="email" value={formState.email} onChange={handleInputChange} placeholder="E-mail" className="p-2 border rounded-lg" required />
-            <input name="username" value={formState.username} onChange={handleInputChange} placeholder="Username" className="p-2 border rounded-lg" required />
-            <input type="password" name="password" value={formState.password} onChange={handleInputChange} placeholder="Senha" className="p-2 border rounded-lg" />
-            <input name="address" value={formState.address} onChange={handleInputChange} placeholder="Endereço" className="p-2 border rounded-lg" />
-            <select name="plan" value={formState.plan} onChange={handleInputChange} className="p-2 border rounded-lg">
+            <input
+              name="name"
+              value={formState.name}
+              onChange={handleInputChange}
+              placeholder="Nome"
+              className="p-2 border rounded-lg"
+              required
+            />
+            <input
+              type="email"
+              name="email"
+              value={formState.email}
+              onChange={handleInputChange}
+              placeholder="E-mail"
+              className="p-2 border rounded-lg"
+              required
+            />
+            <input
+              name="username"
+              value={formState.username}
+              onChange={handleInputChange}
+              placeholder="Username"
+              className="p-2 border rounded-lg"
+              required
+            />
+            <input
+              type="password"
+              name="password"
+              value={formState.password}
+              onChange={handleInputChange}
+              placeholder="Senha"
+              className="p-2 border rounded-lg"
+            />
+            <input
+              name="address"
+              value={formState.address}
+              onChange={handleInputChange}
+              placeholder="Endereço"
+              className="p-2 border rounded-lg"
+            />
+            <select
+              name="plan"
+              value={formState.plan}
+              onChange={handleInputChange}
+              className="p-2 border rounded-lg"
+            >
               <option value="Free">Free</option>
               <option value="Pro">Pro</option>
               <option value="Premium">Premium</option>
             </select>
-            <input name="source" value={formState.source} onChange={handleInputChange} placeholder="Origem" className="p-2 border rounded-lg" />
-            <input name="segment" value={formState.segment} onChange={handleInputChange} placeholder="Segmento" className="p-2 border rounded-lg" />
-            <select name="role" value={formState.role} onChange={handleInputChange} className="p-2 border rounded-lg">
+            <input
+              name="source"
+              value={formState.source}
+              onChange={handleInputChange}
+              placeholder="Origem"
+              className="p-2 border rounded-lg"
+            />
+            <input
+              name="segment"
+              value={formState.segment}
+              onChange={handleInputChange}
+              placeholder="Segmento"
+              className="p-2 border rounded-lg"
+            />
+            <select
+              name="role"
+              value={formState.role}
+              onChange={handleInputChange}
+              className="p-2 border rounded-lg"
+            >
               <option value="user">Usuário</option>
               <option value="admin">Administrador</option>
             </select>
           </div>
           <div className="flex space-x-2">
-            <button type="submit" disabled={formLoading} className="p-3 bg-green-500 text-white rounded-lg flex items-center space-x-2">
+            <button
+              type="submit"
+              disabled={formLoading}
+              className="p-3 bg-green-500 text-white rounded-lg flex items-center space-x-2"
+            >
               {formLoading ? <FaSpinner className="animate-spin" /> : editingUser ? <FaEdit /> : <FaPlus />}
               <span>{editingUser ? "Salvar Alterações" : "Adicionar"}</span>
             </button>
             {editingUser && (
-              <button type="button" onClick={() => setEditingUser(null)} className="p-3 bg-red-500 text-white rounded-lg flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="p-3 bg-red-500 text-white rounded-lg flex items-center space-x-2"
+              >
                 <FaTimes />
                 <span>Cancelar</span>
               </button>
             )}
           </div>
-          {formStatus === "success" && (
-            <p className="text-green-500">Usuário salvo com sucesso!</p>
-          )}
-          {formStatus === "error" && (
-            <p className="text-red-500">Erro ao salvar usuário.</p>
-          )}
+          {formStatus === "success" && <p className="text-green-500">Usuário salvo com sucesso!</p>}
+          {formStatus === "error" && <p className="text-red-500">Erro ao salvar usuário.</p>}
         </form>
       </div>
 
-      {/* Tabela */}
+      {/* Table */}
       <div className="bg-white rounded-xl shadow-md p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Lista de Usuários ({filteredUsers.length})
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Lista de Usuários ({filteredUsers.length})</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -290,6 +332,7 @@ export default function UserOverview() {
     </div>
   );
 }
+
 
 
 

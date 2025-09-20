@@ -1,6 +1,7 @@
+// painel-interno/src/components/ConversionMetrics.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, JSX } from "react";
 import {
   FaChartBar,
   FaSyncAlt,
@@ -32,6 +33,13 @@ interface ChartItem {
   pro: number;
 }
 
+type ConversionState = {
+  totalUsers: number;
+  proUsers: number;
+  churnRate: number;
+  chartData: ChartItem[];
+};
+
 const MetricCard = ({
   icon,
   title,
@@ -50,14 +58,14 @@ const MetricCard = ({
   </div>
 );
 
-export default function ConversionMetrics() {
-  const [data, setData] = useState({
+export default function ConversionMetrics(): JSX.Element {
+  const [data, setData] = useState<ConversionState>({
     totalUsers: 0,
     proUsers: 0,
     churnRate: 0,
-    chartData: [] as ChartItem[],
+    chartData: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,13 +81,13 @@ export default function ConversionMetrics() {
         const churned = users.filter((u) => u.churned).length;
         const churnRate = totalUsers > 0 ? (churned / totalUsers) * 100 : 0;
 
-        const bySource = users.reduce((acc, u) => {
+        const bySource = users.reduce<Record<string, ChartItem>>((acc, u) => {
           const src = u.source || "N/A";
           if (!acc[src]) acc[src] = { name: src, free: 0, pro: 0 };
           if (u.plan === "Pro") acc[src].pro += 1;
           else acc[src].free += 1;
           return acc;
-        }, {} as Record<string, ChartItem>);
+        }, {});
 
         setData({
           totalUsers,
@@ -88,11 +96,8 @@ export default function ConversionMetrics() {
           chartData: Object.values(bySource),
         });
       } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Erro desconhecido ao carregar métricas.");
-        }
+        if (err instanceof Error) setError(err.message);
+        else setError("Erro desconhecido ao carregar métricas.");
       } finally {
         setLoading(false);
       }
@@ -148,14 +153,16 @@ export default function ConversionMetrics() {
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey="free" fill="#f87171" name="Grátis" />
-            <Bar dataKey="pro" fill="#10b981" name="Pro" />
+            <Bar dataKey="free" name="Grátis" />
+            <Bar dataKey="pro" name="Pro" />
           </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 }
+
+
 
 
 

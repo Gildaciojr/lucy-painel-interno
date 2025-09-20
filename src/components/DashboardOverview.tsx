@@ -1,3 +1,4 @@
+// painel-interno/src/components/DashboardOverview.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -20,6 +21,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { apiFetch } from "../services/api";
 
 interface User {
   id: number;
@@ -28,26 +30,37 @@ interface User {
   churned?: boolean;
 }
 
-interface Financa { id: number }
-interface Compromisso { id: number }
-interface Conteudo { id: number }
-interface Gamificacao { id: number }
-interface Feedback { id: number; rating: number; comment: string }
+interface Financa {
+  id: number;
+  // acrescente outros campos se precisar
+}
 
-const MetricCard = ({ icon, title, value }: { icon: React.ReactNode, title: string, value: string | number }) => (
-  <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
-    <div className="p-3 rounded-full bg-purple-500 text-white text-xl">
-      {icon}
-    </div>
-    <div>
-      <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
-      <p className="text-xl font-bold text-gray-800">{value}</p>
-    </div>
-  </div>
-);
+interface Compromisso {
+  id: number;
+  // acrescente outros campos se precisar
+}
 
-export default function DashboardOverview() {
-  const [loading, setLoading] = useState(true);
+interface Conteudo {
+  id: number;
+  // acrescente outros campos se precisar
+}
+
+interface Gamificacao {
+  id: number;
+  // acrescente outros campos se precisar
+}
+
+interface Feedback {
+  id: number;
+  rating: number;
+  comment?: string;
+  createdAt?: string;
+}
+
+type FeatureUsageItem = { name: string; count: number };
+
+export default function DashboardOverview(): React.ReactElement {
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [users, setUsers] = useState<User[]>([]);
@@ -57,57 +70,64 @@ export default function DashboardOverview() {
   const [gamificacoes, setGamificacoes] = useState<Gamificacao[]>([]);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
-useEffect(() => {
-  const fetchAll = async () => {
-    try {
-      const [u, f, c, co, g, fb] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/financas`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/compromissos`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/conteudo`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/gamificacao`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/feedback`),
-      ]);
-      if (!u.ok || !f.ok || !c.ok || !co.ok || !g.ok || !fb.ok)
-        throw new Error("Erro ao buscar dados.");
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [
+          u,
+          f,
+          c,
+          co,
+          g,
+          fb,
+        ] = await Promise.all([
+          apiFetch("/users"),
+          apiFetch("/financas"),
+          apiFetch("/compromissos"),
+          apiFetch("/conteudo"),
+          apiFetch("/gamificacao"),
+          apiFetch("/feedback"),
+        ]);
 
-      setUsers(await u.json());
-      setFinancas(await f.json());
-      setCompromissos(await c.json());
-      setConteudos(await co.json());
-      setGamificacoes(await g.json());
-      setFeedbacks(await fb.json());
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Erro desconhecido');
+        // Faz cast explícito para os tipos esperados
+        setUsers(u as User[]);
+        setFinancas(f as Financa[]);
+        setCompromissos(c as Compromisso[]);
+        setConteudos(co as Conteudo[]);
+        setGamificacoes(g as Gamificacao[]);
+        setFeedbacks(fb as Feedback[]);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Erro desconhecido");
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchAll();
-}, []);
+    };
+    fetchAll();
+  }, []);
 
-
-  if (loading) return (
-    <div className="text-center p-6 flex items-center justify-center space-x-2">
-      <FaSpinner className="animate-spin" />
-      <span>Carregando painel...</span>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="text-center p-6 flex items-center justify-center space-x-2">
+        <FaSpinner className="animate-spin" />
+        <span>Carregando painel...</span>
+      </div>
+    );
 
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
   const totalUsers = users.length;
-  const proUsers = users.filter(u => u.plan === "Pro").length;
-  const premiumUsers = users.filter(u => u.plan === "Premium").length;
-  const churnRate = totalUsers ? (users.filter(u => u.churned).length / totalUsers * 100).toFixed(1) + "%" : "0%";
+  const proUsers = users.filter((u) => u.plan === "Pro").length;
+  const premiumUsers = users.filter((u) => u.plan === "Premium").length;
+  const churnRate = totalUsers
+    ? (users.filter((u) => u.churned).length / totalUsers) * 100
+    : 0;
+  const churnRateLabel = `${churnRate.toFixed(1)}%`;
   const ltv = proUsers * 50;
   const roi = proUsers * 20;
 
-  const featureUsage = [
+  const featureUsage: FeatureUsageItem[] = [
     { name: "Finanças", count: financas.length },
     { name: "Compromissos", count: compromissos.length },
     { name: "Conteúdo", count: conteudos.length },
@@ -127,9 +147,13 @@ useEffect(() => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard icon={<FaRetweet />} title="Churn" value={churnRate} />
+        <MetricCard icon={<FaRetweet />} title="Churn" value={churnRateLabel} />
         <MetricCard icon={<FaBug />} title="Bugs simulados" value="3" />
-        <MetricCard icon={<FaCommentDots />} title="Feedbacks Positivos" value={feedbacks.filter(f => f.rating >= 8).length} />
+        <MetricCard
+          icon={<FaCommentDots />}
+          title="Feedbacks Positivos"
+          value={feedbacks.filter((f) => f.rating >= 8).length}
+        />
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-6">
@@ -140,10 +164,30 @@ useEffect(() => {
             <YAxis />
             <Tooltip />
             <Legend />
-            <Bar dataKey="count" fill="#6366f1" name="Usos" />
+            <Bar dataKey="count" name="Usos" />
           </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 }
+
+const MetricCard = ({
+  icon,
+  title,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string | number;
+}) => (
+  <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
+    <div className="p-3 rounded-full bg-purple-500 text-white text-xl">{icon}</div>
+    <div>
+      <h3 className="text-sm font-semibold text-gray-500">{title}</h3>
+      <p className="text-xl font-bold text-gray-800">{value}</p>
+    </div>
+  </div>
+);
+
+

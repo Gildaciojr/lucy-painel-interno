@@ -10,6 +10,7 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../services/api";
 
 interface Admin {
   id: number;
@@ -40,14 +41,13 @@ export default function AdminManagementPage() {
   const router = useRouter();
 
   const fetchAdmins = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`);
-      if (!response.ok) throw new Error("Erro ao buscar administradores.");
-      const data: Admin[] = await response.json();
+      const data: Admin[] = await apiFetch("/users");
       setAdmins(data.filter((u) => u.role === "admin" || u.role === "superadmin"));
     } catch (err: unknown) {
       console.error(err instanceof Error ? err.message : "Erro desconhecido.");
+      setAdmins([]);
     } finally {
       setLoading(false);
     }
@@ -66,12 +66,10 @@ export default function AdminManagementPage() {
     e.preventDefault();
     setFormLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
+      await apiFetch("/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formState),
       });
-      if (!response.ok) throw new Error();
       setFormState({
         name: "",
         email: "",
@@ -81,7 +79,7 @@ export default function AdminManagementPage() {
         address: "",
         role: "user",
       });
-      fetchAdmins();
+      await fetchAdmins();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro desconhecido ao adicionar admin.");
     } finally {
@@ -107,17 +105,12 @@ export default function AdminManagementPage() {
     if (!editingAdmin) return;
     setFormLoading(true);
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/${editingAdmin.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formState),
-        },
-      );
-      if (!response.ok) throw new Error();
+      await apiFetch(`/users/${editingAdmin.id}`, {
+        method: "PUT",
+        body: JSON.stringify(formState),
+      });
       setEditingAdmin(null);
-      fetchAdmins();
+      await fetchAdmins();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro desconhecido ao atualizar admin.");
     } finally {
@@ -128,11 +121,8 @@ export default function AdminManagementPage() {
   const handleDeleteAdmin = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este administrador?")) return;
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Erro ao excluir administrador.");
-      fetchAdmins();
+      await apiFetch(`/users/${id}`, { method: "DELETE" });
+      await fetchAdmins();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Erro desconhecido ao excluir admin.");
     }
@@ -164,7 +154,7 @@ export default function AdminManagementPage() {
             <input name="name" value={formState.name} onChange={handleInputChange} placeholder="Nome" className="p-2 rounded-lg border" required />
             <input type="email" name="email" value={formState.email} onChange={handleInputChange} placeholder="E-mail" className="p-2 rounded-lg border" required />
             <input name="username" value={formState.username} onChange={handleInputChange} placeholder="Nome de Usuário" className="p-2 rounded-lg border" required />
-            <input type="password" name="password" value={formState.password} onChange={handleInputChange} placeholder="Senha" className="p-2 rounded-lg border" />
+            <input type="password" name="password" value={formState.password} onChange={handleInputChange} placeholder="Senha (deixe vazio para manter)" className="p-2 rounded-lg border" />
             <select name="role" value={formState.role} onChange={handleInputChange} className="p-2 rounded-lg border">
               <option value="user">Usuário</option>
               <option value="admin">Administrador</option>
@@ -255,6 +245,8 @@ export default function AdminManagementPage() {
     </div>
   );
 }
+
+
 
 
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { FaExclamationTriangle, FaCommentAlt, FaSpinner } from "react-icons/fa";
+import { apiFetch } from "../services/api";
 
 interface FeedbackItem {
   id: number;
@@ -23,10 +24,10 @@ export default function SupportIndicators() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/metrics/support`);
-        if (!res.ok) throw new Error("Erro ao buscar métricas de suporte.");
-        const payload: SupportResponse = await res.json();
+        const payload: SupportResponse = await apiFetch("/metrics/support");
         setData(payload);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Erro desconhecido.");
@@ -96,6 +97,7 @@ export default function SupportIndicators() {
     </div>
   );
 }
+
 
 
 
