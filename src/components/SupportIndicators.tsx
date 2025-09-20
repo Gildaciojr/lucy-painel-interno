@@ -1,34 +1,23 @@
+// src/components/SupportIndicators.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, JSX } from "react";
 import { FaExclamationTriangle, FaCommentAlt, FaSpinner } from "react-icons/fa";
 import { apiFetch } from "../services/api";
 
-interface FeedbackItem {
-  id: number;
-  rating: number;
-  comment: string;
-  createdAt: string;
-}
+interface FeedbackItem { id: number; rating: number; comment: string; createdAt: string; }
+interface SupportResponse { totalFeedbacks: number; nps: number; lastFeedbacks: FeedbackItem[]; }
 
-interface SupportResponse {
-  totalFeedbacks: number;
-  nps: number;
-  lastFeedbacks: FeedbackItem[];
-}
-
-export default function SupportIndicators() {
+export default function SupportIndicators(): JSX.Element {
   const [data, setData] = useState<SupportResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const payload: SupportResponse = await apiFetch("/metrics/support");
-        setData(payload);
+        const res = await apiFetch<SupportResponse>("/metrics/support");
+        setData(res ?? null);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Erro desconhecido.");
       } finally {
@@ -57,9 +46,7 @@ export default function SupportIndicators() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
-          <div className="p-3 rounded-full bg-yellow-500 text-white text-xl">
-            <FaExclamationTriangle />
-          </div>
+          <div className="p-3 rounded-full bg-yellow-500 text-white text-xl"><FaExclamationTriangle /></div>
           <div>
             <h3 className="text-sm font-semibold text-gray-500">Feedbacks</h3>
             <p className="text-xl font-bold text-gray-800">{data.totalFeedbacks}</p>
@@ -67,9 +54,7 @@ export default function SupportIndicators() {
         </div>
 
         <div className="flex items-center space-x-4 p-4 bg-white rounded-xl shadow-md">
-          <div className="p-3 rounded-full bg-blue-500 text-white text-xl">
-            <FaCommentAlt />
-          </div>
+          <div className="p-3 rounded-full bg-blue-500 text-white text-xl"><FaCommentAlt /></div>
           <div>
             <h3 className="text-sm font-semibold text-gray-500">NPS</h3>
             <p className="text-xl font-bold text-gray-800">{data.nps.toFixed(1)}</p>
@@ -85,9 +70,7 @@ export default function SupportIndicators() {
             <li key={f.id} className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">Nota: {f.rating}</span>
-                <span className="text-xs text-gray-500">
-                  {new Date(f.createdAt).toLocaleString()}
-                </span>
+                <span className="text-xs text-gray-500">{new Date(f.createdAt).toLocaleString()}</span>
               </div>
               {f.comment && <p className="mt-1 text-gray-700">“{f.comment}”</p>}
             </li>
@@ -97,6 +80,7 @@ export default function SupportIndicators() {
     </div>
   );
 }
+
 
 
 

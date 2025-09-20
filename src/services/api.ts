@@ -1,9 +1,8 @@
-// painel-interno/src/services/api.ts
+// src/services/api.ts
 export async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  // base URL (NEXT_PUBLIC_API_URL é embutida no build do Next.js)
   const base = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-  // só acessa localStorage no browser
+  // Só acessa localStorage no browser
   const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
   const defaultHeaders: Record<string, string> = {
@@ -23,7 +22,6 @@ export async function apiFetch<T = unknown>(endpoint: string, options: RequestIn
   });
 
   if (!response.ok) {
-    // tenta extrair um body legível
     const text = await response.text().catch(() => "");
     let message = text || `Erro na requisição (status ${response.status})`;
 
@@ -31,16 +29,16 @@ export async function apiFetch<T = unknown>(endpoint: string, options: RequestIn
       const parsed = JSON.parse(text);
       message = typeof parsed === "string" ? parsed : JSON.stringify(parsed);
     } catch {
-      // texto não JSON — mantemos `message`
+      // não-JSON: mantém message
     }
 
     throw new Error(message);
   }
 
-  // parse seguro do JSON (se não for JSON, retorna null)
   const data = await response.json().catch(() => null);
   return data as T;
 }
+
 
 
 
