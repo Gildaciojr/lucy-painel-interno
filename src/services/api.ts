@@ -1,60 +1,46 @@
 // painel-interno/src/services/api.ts
-export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  // tenta obter base URL das variáveis de ambiente (build-time) ou usar fallback seguro
-  const env = (process.env as any)?.NEXT_PUBLIC_API_URL;
-  const BASE = env && typeof env === "string" && env.length > 0
-    ? env
-    : "https://api.mylucy.app";
+export async function apiFetch<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  // base URL (NEXT_PUBLIC_API_URL é embutida no build do Next.js)
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-  // monta URL corretamente (suporta endpoint absoluto também)
-  const url =
-    endpoint.startsWith("http://") || endpoint.startsWith("https://")
-      ? endpoint
-      : `${BASE}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+  // só acessa localStorage no browser
+  const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
 
-  // pega token do localStorage quando no browser (defensivo)
-  let token = "";
-  if (typeof window !== "undefined") {
-    try {
-      token = localStorage.getItem("auth_token") || "";
-    } catch {
-      token = "";
-    }
+  const defaultHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    defaultHeaders.Authorization = `Bearer ${token}`;
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string> | undefined),
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  const response = await fetch(url, {
+  const response = await fetch(`${base}${endpoint}`, {
     ...options,
-    headers,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers as Record<string, string> | undefined),
+    },
   });
 
   if (!response.ok) {
-    // tenta extrair mensagem estruturada do body (Nest padrão) ou retornar texto bruto
-    const text = await response.text();
+    // tenta extrair um body legível
+    const text = await response.text().catch(() => "");
+    let message = text || `Erro na requisição (status ${response.status})`;
+
     try {
       const parsed = JSON.parse(text);
-      if (parsed && parsed.message) throw new Error(parsed.message);
-      if (typeof parsed === "string") throw new Error(parsed);
-      throw new Error(JSON.stringify(parsed));
-    } catch (err) {
-      // se não for JSON, usa o texto direto (ou código)
-      const msg = text || `Request failed with status ${response.status}`;
-      throw new Error(msg);
+      message = typeof parsed === "string" ? parsed : JSON.stringify(parsed);
+    } catch {
+      // texto não JSON — mantemos `message`
     }
+
+    throw new Error(message);
   }
 
-  // retorna JSON quando possível, senão texto
-  const txt = await response.text();
-  try {
-    return JSON.parse(txt);
-  } catch {
-    return txt;
-  }
+  // parse seguro do JSON (se não for JSON, retorna null)
+  const data = await response.json().catch(() => null);
+  return data as T;
 }
+
 
 
