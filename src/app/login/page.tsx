@@ -1,3 +1,4 @@
+// painel-interno/src/app/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -17,19 +18,22 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 🔑 Detecta se o valor digitado é email ou username
-      const isEmail = username.includes("@");
+      // normalizar/trim no identificador (evita espaços acidentais)
+      const identifier = username?.toString().trim() ?? "";
+      const isEmail = identifier.includes("@");
+      const payload = isEmail
+        ? { email: identifier.toLowerCase(), password }
+        : { username: identifier, password };
+
+      // Opcional: console.debug para ajudar no dev (NÃO logar senha)
+      // console.debug('login payload (no password):', isEmail ? { email: identifier.toLowerCase() } : { username: identifier });
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            isEmail
-              ? { email: username, password }
-              : { username, password }
-          ),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -74,7 +78,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gray-800">Login Admin</h1>
           <p className="text-gray-500">Acesse seu painel de gestão</p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-6" autoComplete="on">
           <div className="relative">
             <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -84,6 +88,8 @@ export default function LoginPage() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full p-4 pl-12 rounded-xl bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-200"
               disabled={loading}
+              autoComplete="username"
+              inputMode="email"
             />
           </div>
           <div className="relative">
@@ -95,6 +101,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-4 pl-12 rounded-xl bg-gray-100 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-200"
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
@@ -111,6 +118,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
 
 
 
